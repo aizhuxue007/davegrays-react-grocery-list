@@ -3,6 +3,7 @@ import SearchItem from './SearchItem';
 import AddItem from './AddItem';
 import Content from './Content';
 import Footer from './Footer';
+import apiRequest from './apiRequest';
 import { useState, useEffect } from 'react';
 
 function App() {
@@ -33,21 +34,50 @@ function App() {
     }, 2000)
   }, [])
 
-  const addItem = (item) => {
+  const makeReqObj = (item, method) => {
+    const reqObj = {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(item)
+    }
+    return reqObj
+  }
+
+  const makeRequestAndHandleError = async (url, reqObj) => {
+    const result = await apiRequest(url, reqObj)
+    if (result) setFetchError(result)
+  }
+
+  const addItem = async (item) => {
     const id = items.length ? items[items.length - 1].id + 1 : 1;
     const myNewItem = { id, checked: false, item };
     const listItems = [...items, myNewItem];
     setItems(listItems);
+    
+    makeRequestAndHandleError(API_URL, makeReqObj(myNewItem, 'POST'))
   }
 
-  const handleCheck = (id) => {
+  const handleCheck = async (id) => {
     const listItems = items.map((item) => item.id === id ? { ...item, checked: !item.checked } : item);
     setItems(listItems);
+
+    const selectedItem = listItems.filter((item) => item.id === id)
+    const patchedItem = { checked: selectedItem[0].checked }
+    makeRequestAndHandleError(makeReqUrlWithId(id), makeReqObj(patchedItem, 'PATCH'))
   }
 
-  const handleDelete = (id) => {
+  const makeReqUrlWithId = (id) => {
+    return `${API_URL}/${id}`
+  }
+
+  const handleDelete = async (id) => {
     const listItems = items.filter((item) => item.id !== id);
     setItems(listItems);
+
+    const deleteOptions = { method: 'DELETE' }
+    await makeRequestAndHandleError(makeReqUrlWithId(id), deleteOptions)
   }
 
   const handleSubmit = (e) => {
